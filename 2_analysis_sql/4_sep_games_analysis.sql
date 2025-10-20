@@ -1,6 +1,6 @@
 -- 15.10.2025
 
--- Які гравці серед лідерів найбільше грали у вересні 2025 (загальна кількість ігор) у кожному типі активності?
+-- 1. Які гравці серед лідерів найбільше грали у вересні 2025 (загальна кількість ігор) у кожному типі активності?
 SELECT 
         username,
         time_class,
@@ -11,6 +11,7 @@ FROM top_players_games_2025_09_flat
 GROUP BY username, time_class
 ORDER BY COUNT(*) DESC;
 
+-- ВИСНОВОК:
 -- Найбільшу кількість ігор, зіграних у вересні 2025 року показали гравці з ніками 'judenyc' - 1965, 'DanielNaroditsky' - 1407, 'kreysmyr' - 1312, 'Badfarma07' - 990
 -- Отже, за такої активності ці гравці протягом вересня щодня грали більше 30 ігор і щогодини грали мінімум 1 гру
 
@@ -34,9 +35,10 @@ FROM top_players_games_2025_09_flat
 GROUP BY username, time_class, (to_timestamp(end_time) AT TIME ZONE 'UTC')::DATE
 ORDER BY COUNT(*) DESC;
 
--- З таблиці видно, що 'judenyc' 07.09.2025 р зіграв 392 гри за один день, що складає 16 ігор на годин протягом всіх 24 годин (в режимі bullet)
+-- З таблиці видно, що 'judenyc' 07.09.2025 р зіграв 392 гри за один день, що складає 16 ігор на годину протягом всіх 24 годин (в режимі bullet)
 
--- Які гравці показали найкращі результати (кількість перемог) у кожному типі активності?
+
+-- 2. Які гравці показали найкращі результати (кількість перемог) у кожному типі активності?
 
 SELECT 
         player_name,
@@ -60,9 +62,12 @@ FROM (
 GROUP BY time_class, player_name
 ORDER BY COUNT(*) DESC;
 
+
+-- ВИСНОВОК:
 -- Рейтинг з великим відривом очолюють 'judenyc' та 'DaniielNaroditsky' із 1107 та 1041 перемог за вересень 2025 відповідно.
 
--- Які гравці маю найбільшу результативність в іграх (найбільший відсоток перемог)?
+
+-- 3. Які гравці маю найбільшу результативність в іграх (найбільший відсоток перемог)?
 -- Обмежимо кількість зіграних ігор до умови (не менше 100 ігор), щоб уникнути ситуації, коли гравець зіграв 1 гру і виграв
 
 SELECT
@@ -93,16 +98,75 @@ GROUP BY player_name, time_class
 HAVING COUNT(*) > 100
 ORDER BY win_rate_percent DESC;
 
--- Якщо порахувати розподіл кількості зіграних ігор і обмежити екстра малі (1-100 ігор, наприклад)
+-- ВИСНОВОК:
+-- Якщо порахувати розподіл кількості зіграних ігор і виключити дуже малоактивних гравців (наприклад, тих, хто зіграв менше 100 ігор), 
+-- то найвищий відсоток перемог показав Hikaru — 83,6 %. До першої десятки за результативністю входять гравці з показником понад 65 % перемог.
+
+
+
+-- 4. Які гравці мають найбільшу різницю між поточним рейтингом та кращим досягнутим рейтингом?
+SELECT
+    tpdi.username,
+    type,
+    rank,
+    (chess_blitz_best_rating - chess_blitz_rating) AS chess_blitz_diff,
+    (chess_bullet_best_rating - chess_bullet_rating) AS chess_bullet_diff,
+    (chess_rapid_best_rating - chess_rapid_rating) AS chess_rapid_diff,
+    (chess_daily_best_rating - chess_daily_rating) AS chess_daily_diff,
+    ROUND(
+        (
+            COALESCE(chess_blitz_best_rating - chess_blitz_rating, 0) +
+            COALESCE(chess_bullet_best_rating - chess_bullet_rating, 0) +
+            COALESCE(chess_rapid_best_rating - chess_rapid_rating, 0) +
+            COALESCE(chess_daily_best_rating - chess_daily_rating, 0)
+        )::numeric
+        / NULLIF(
+            (CASE WHEN chess_blitz_best_rating IS NOT NULL AND chess_blitz_rating IS NOT NULL THEN 1 ELSE 0 END +
+             CASE WHEN chess_bullet_best_rating IS NOT NULL AND chess_bullet_rating IS NOT NULL THEN 1 ELSE 0 END +
+             CASE WHEN chess_rapid_best_rating IS NOT NULL AND chess_rapid_rating IS NOT NULL THEN 1 ELSE 0 END +
+             CASE WHEN chess_daily_best_rating IS NOT NULL AND chess_daily_rating IS NOT NULL THEN 1 ELSE 0 END), 0
+        ),
+    2
+    ) AS avg_diff
+FROM top_players_detailed_info tpdi
+JOIN chesscom_all_leaders cal ON cal.username = tpdi.username
+ORDER BY cal.rank, avg_diff;
+
+-- ВИСНОВОК:
+-- Таблиця відсортована спочатку по рейтингу гравця з таблиці chesscom_all_leaders, а потім від найменшої різниці між кращим рейтингом і поточним рейтинго до найбільшої
+-- Спостерігаємо повторення імен гравців в різних типах активності, що свідчить про їх стабільний розвиток в декількох активностях
+-- Першим у списку є гравець ArkadiiKhromaev, котрий є першим в live_bullet та покращує або утримує свій найкращий рейтинг
+
+
+-- 5. Яка середня кількість зіграних партій серед топ-50 гравців для кожного виду активності (september 2025)?
+
+WITH games_count AS (
+    SELECT
+        username,
+        time_class,
+        COUNT(DISTINCT end_time || white_username || black_username) AS count_games
+    FROM top_players_games_2025_09_flat
+    GROUP BY username, time_class
+)
+
+SELECT
+    time_class,
+    ROUND(AVG(count_games)::numeric, 2) AS avg_games
+FROM games_count
+GROUP BY time_class
+ORDER BY avg_games DESC;
+
+-- ВИСНОВОК:
+-- В середньому за вересень гравці зіграли 167 ігор в bullet, 164 - blitz, 16 - rapid та 6 - daily. Ця різниця пояснюється часом на 1 гру в різних режимах гри (різних активностях)
 
 
 
 
 -- Наступні питання для дослідження:
 
--- Які гравці мають найбільшу різницю між поточним рейтингом та кращим досягнутим рейтингом?
+
 -- Чи існує кореляція між кількістю зіграних партій і поточним рейтингом у кожному типі активності?
--- Яка середня кількість зіграних партій серед топ-50 гравців для кожного виду активності?
+
 -- Які гравці мають найбільшу різницю між поточним рейтингом та кращим досягнутим рейтингом?
 -- Які гравці показують найбільшу стабільність у рейтингах (мінімальна різниця між поточним і кращим рейтингом)?
 -- Які гравці мають найменшу кількість зіграних партій у топ-50, і чи це впливає на їхнє місце у рейтингу?

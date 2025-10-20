@@ -121,3 +121,15 @@ CSV HEADER;
     2. Ввести 'sudo cp "шлях до файлу" /tmp/ ' - так завантажити всі файли в публічну директорію
     3. Виконати завантаження в таблиці з файлів
 */
+
+
+-- Перевірка:
+
+SELECT *
+FROM chesscom_all_leaders
+
+SELECT *
+FROM top_players_detailed_info
+
+SELECT *
+FROM top_players_games_2025_09_flat

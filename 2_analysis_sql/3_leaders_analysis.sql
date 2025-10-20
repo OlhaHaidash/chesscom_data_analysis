@@ -24,9 +24,11 @@ ORDER BY COUNT(DISTINCT(username)) DESC
 SELECT 
         username,
         ROUND(AVG(score),0) AS avg_score,
-        RIGHT(country, 2)
-FROM chesscom_all_leaders
-GROUP BY username, RIGHT(country, 2)
+        cci.name AS country_name
+FROM chesscom_all_leaders cal
+LEFT JOIN country_code_info cci ON
+    cci.code = RIGHT(cal.country, 2)
+GROUP BY username, cci.name
 ORDER BY AVG(score) DESC
 LIMIT 10
 
