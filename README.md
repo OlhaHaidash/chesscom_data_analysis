@@ -19,6 +19,7 @@ No CSV files are included. Data is fetched directly from the Chess.com API (the 
 
 <img align="left" width="1153" height="1272" src="https://github.com/OlhaHaidash/chesscom_data_analysis/blob/main/chesscom_schema.png">
 
+The overview of the data is contained in the file [0_data_overview.ipynb]().
 
 # Data Version and Update Info
 The data was last collected on October 13, 2025 using the Chess.com Public API.
